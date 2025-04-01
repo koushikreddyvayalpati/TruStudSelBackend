@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment specific files ###
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.properties.local
+src/main/resources/application-local.properties
+src/main/resources/application-dev.properties
