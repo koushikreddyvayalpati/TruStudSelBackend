@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -37,6 +39,65 @@ public class S3Controller {
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (IOException e) {
             Map<String, String> response = new HashMap<>();
+            response.put("error", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @PostMapping("/upload-multiple")
+    public ResponseEntity<Map<String, Object>> uploadMultipleFiles(@RequestParam("files") MultipartFile[] files) {
+        try {
+            List<String> fileNames = new ArrayList<>();
+            for (MultipartFile file : files) {
+                String fileName = s3Service.uploadFile(file);
+                fileNames.add(fileName);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("fileNames", fileNames);
+            response.put("message", "Files uploaded successfully");
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (IOException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("error", e.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @PostMapping("/product-images")
+    public ResponseEntity<Map<String, Object>> uploadProductImages(@RequestParam("images") MultipartFile[] files) {
+        try {
+            if (files.length > 5) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Maximum 5 images allowed per product");
+                return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+            }
+            
+            List<String> fileNames = new ArrayList<>();
+            String primaryImage = null;
+            List<String> additionalImages = new ArrayList<>();
+            
+            // Process each file
+            for (int i = 0; i < files.length; i++) {
+                String fileName = s3Service.uploadFile(files[i]);
+                fileNames.add(fileName);
+                
+                // First image is primary, rest are additional
+                if (i == 0) {
+                    primaryImage = fileName;
+                } else {
+                    additionalImages.add(fileName);
+                }
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("fileNames", fileNames);
+            response.put("primaryImage", primaryImage);
+            response.put("additionalImages", additionalImages);
+            response.put("message", "Product images uploaded successfully");
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (IOException e) {
+            Map<String, Object> response = new HashMap<>();
             response.put("error", e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }

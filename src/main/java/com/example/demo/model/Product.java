@@ -31,6 +31,9 @@ public class Product {
     private String email;
     
     @DynamoDBAttribute
+    private String sellerName;
+    
+    @DynamoDBAttribute
     private String city;
     
     @DynamoDBAttribute

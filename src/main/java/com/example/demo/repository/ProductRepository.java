@@ -64,6 +64,17 @@ public class ProductRepository {
         return dynamoDBMapper.scan(Product.class, scanExpression);
     }
     
+    public List<Product> findByCity(String city) {
+        Map<String, AttributeValue> eav = new HashMap<>();
+        eav.put(":city", new AttributeValue().withS(city));
+        
+        DynamoDBScanExpression scanExpression = new DynamoDBScanExpression()
+                .withFilterExpression("city = :city")
+                .withExpressionAttributeValues(eav);
+        
+        return dynamoDBMapper.scan(Product.class, scanExpression);
+    }
+    
     public List<Product> findAll() {
         return dynamoDBMapper.scan(Product.class, new DynamoDBScanExpression());
     }

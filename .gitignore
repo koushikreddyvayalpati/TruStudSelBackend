@@ -41,3 +41,11 @@ build/
 *.properties.local
 src/main/resources/application-local.properties
 src/main/resources/application-dev.properties
+
+### AWS Credentials ###
+src/main/resources/application.properties
+**/application.properties
+**/aws.properties
+**/credentials
+**/credentials.json
+**/.aws/
