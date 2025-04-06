@@ -49,3 +49,7 @@ src/main/resources/application.properties
 **/credentials
 **/credentials.json
 **/.aws/
+
+### macOS files ###
+.DS_Store
+**/.DS_Store
