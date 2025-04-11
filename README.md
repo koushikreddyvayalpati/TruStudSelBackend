@@ -53,7 +53,9 @@ Currently, the API doesn't require authentication tokens. Email addresses are us
 | GET | `/api/products/city/{city}` | Get products by city with filters | **Yes** |
 | GET | `/api/products/nearby-universities/{zipcode}` | Get nearby universities based on zipcode | No |
 | GET | `/api/products/featured/{university}/{city}` | Get featured products for university and city | No |
+| GET | `/api/products/featured/{university}/{city}/paginated` | Get featured products with pagination | **Yes** |
 | GET | `/api/products/new-arrivals/{university}` | Get newest products for university | No |
+| GET | `/api/products/new-arrivals/{university}/paginated` | Get newest products with pagination | **Yes** |
 | GET | `/api/products/search` | Search products by keyword | **Yes** |
 | PUT | `/api/products/{id}` | Update a product | No |
 | PATCH | `/api/products/{id}/status` | Update product status | No |
@@ -492,6 +494,243 @@ function CategoryProductList({ category }) {
     // More products...
   ],
   "totalItems": 45,
+  "currentPage": 0,
+  "totalPages": 5
+}
+```
+
+### 5. Get Featured Products with Pagination
+
+Retrieves featured products for a specific university and city with pagination support.
+
+**Endpoint**: `GET /api/products/featured/{university}/{city}/paginated`
+
+**URL Parameters**:
+- `university`: University name (e.g., "SUNY Buffalo")
+- `city`: City name (e.g., "Buffalo")
+
+**Query Parameters**:
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Items per page (default: 10)
+
+**Example Request**:
+```javascript
+// Function to fetch featured products with pagination
+async function getFeaturedProducts(university, city, page = 0, size = 10) {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/products/featured/${encodeURIComponent(university)}/${encodeURIComponent(city)}/paginated?page=${page}&size=${size}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch featured products');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    throw error;
+  }
+}
+
+// Example usage in a component
+const [featuredProducts, setFeaturedProducts] = useState([]);
+const [pagination, setPagination] = useState({
+  currentPage: 0,
+  totalPages: 0,
+  totalItems: 0
+});
+
+useEffect(() => {
+  async function loadFeaturedProducts() {
+    try {
+      const result = await getFeaturedProducts('SUNY Buffalo', 'Buffalo');
+      setFeaturedProducts(result.products);
+      setPagination({
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+        totalItems: result.totalItems
+      });
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+  
+  loadFeaturedProducts();
+}, []);
+```
+
+**Response**:
+```json
+{
+  "products": [
+    {
+      "id": "789ghi",
+      "name": "Mini Fridge",
+      "category": "appliances",
+      "price": "75.00",
+      "description": "Small dorm fridge, perfect condition",
+      "email": "student@university.edu",
+      "sellerName": "Michael Brown",
+      "university": "SUNY Buffalo",
+      "city": "Buffalo",
+      "zipcode": "14260",
+      "primaryImage": "https://your-bucket.s3.amazonaws.com/fridge.jpg",
+      "additionalImages": [],
+      "postingdate": "2023-09-18T08:45:00",
+      "productage": "like-new",
+      "sellingtype": "sell",
+      "status": "available"
+    },
+    // More products...
+  ],
+  "totalItems": 25,
+  "currentPage": 0,
+  "totalPages": 3
+}
+```
+
+### 6. Get New Arrivals with Pagination
+
+Retrieves the newest products for a specific university with pagination support.
+
+**Endpoint**: `GET /api/products/new-arrivals/{university}/paginated`
+
+**URL Parameters**:
+- `university`: University name (e.g., "SUNY Buffalo")
+
+**Query Parameters**:
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Items per page (default: 10)
+
+**Example Request**:
+```javascript
+// Function to fetch new arrivals with pagination
+async function getNewArrivals(university, page = 0, size = 10) {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/products/new-arrivals/${encodeURIComponent(university)}/paginated?page=${page}&size=${size}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch new arrivals');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching new arrivals:', error);
+    throw error;
+  }
+}
+
+// Example usage with React Native infinite scroll
+function NewArrivalsScreen({ university }) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 0,
+    hasMore: true
+  });
+
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, [university]);
+
+  // Load first page of data
+  const loadInitialData = async () => {
+    setLoading(true);
+    try {
+      const result = await getNewArrivals(university, 0);
+      setProducts(result.products);
+      setPagination({
+        currentPage: 0,
+        hasMore: result.currentPage < result.totalPages - 1
+      });
+    } catch (error) {
+      console.error('Error loading new arrivals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load next page of data
+  const loadMoreData = async () => {
+    if (loading || !pagination.hasMore) return;
+    
+    setLoading(true);
+    try {
+      const nextPage = pagination.currentPage + 1;
+      const result = await getNewArrivals(university, nextPage);
+      
+      // Append new products to existing list
+      setProducts([...products, ...result.products]);
+      setPagination({
+        currentPage: nextPage,
+        hasMore: nextPage < result.totalPages - 1
+      });
+    } catch (error) {
+      console.error('Error loading more products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Pull-to-refresh handler
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadInitialData();
+    setRefreshing(false);
+  };
+
+  if (loading && products.length === 0) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
+
+  return (
+    <FlatList
+      data={products}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <ProductCard product={item} />}
+      onEndReached={loadMoreData}
+      onEndReachedThreshold={0.5}
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      ListFooterComponent={loading && pagination.hasMore ? <ActivityIndicator size="small" /> : null}
+      ListEmptyComponent={
+        <Text style={styles.emptyText}>No new products available.</Text>
+      }
+    />
+  );
+}
+```
+
+**Response**:
+```json
+{
+  "products": [
+    {
+      "id": "123abc",
+      "name": "MacBook Pro 2021",
+      "category": "electronics",
+      "price": "1200.00",
+      "description": "M1 MacBook Pro, lightly used",
+      "email": "student@university.edu",
+      "sellerName": "Alex Smith",
+      "university": "SUNY Buffalo",
+      "city": "Buffalo",
+      "zipcode": "14260",
+      "primaryImage": "https://your-bucket.s3.amazonaws.com/macbook.jpg",
+      "additionalImages": [],
+      "postingdate": "2023-09-20T15:30:00",
+      "productage": "like-new",
+      "sellingtype": "sell",
+      "status": "available"
+    },
+    // More products...
+  ],
+  "totalItems": 42,
   "currentPage": 0,
   "totalPages": 5
 }

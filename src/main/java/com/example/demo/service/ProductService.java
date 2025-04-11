@@ -542,6 +542,11 @@ public class ProductService {
         return universities;
     }
 
+    /**
+     * Get featured products for a university and city
+     * @deprecated Use getFeaturedProductsWithPagination instead
+     */
+    @Deprecated
     public List<Product> getFeaturedProducts(String university, String city, int limit) {
         // Get all products for the university and city
         List<Product> products = productRepository.findByUniversity(university);
@@ -560,7 +565,54 @@ public class ProductService {
             .limit(limit)
             .collect(Collectors.toList());
     }
+    
+    /**
+     * Get featured products for a university and city with pagination
+     * 
+     * @param university The university to filter by
+     * @param city The city to filter by
+     * @param page Page number (zero-based)
+     * @param size Number of items per page
+     * @return Map containing products list and pagination information
+     */
+    public Map<String, Object> getFeaturedProductsWithPagination(
+            String university, String city, int page, int size) {
+        
+        // Get all products for the university and city
+        List<Product> products = productRepository.findByUniversity(university);
+        
+        // Filter by city and available status
+        products = products.stream()
+            .filter(p -> city.equals(p.getCity()) && "available".equals(p.getStatus()))
+            .collect(Collectors.toList());
+            
+        // Sort by number of views/interests (this would be implemented when we add view tracking)
+        // For now, we'll sort by posting date to show recent products
+        products.sort(Comparator.comparing(Product::getPostingdate).reversed());
+        
+        // Apply pagination
+        int totalItems = products.size();
+        int startIndex = Math.min(page * size, totalItems);
+        int endIndex = Math.min(startIndex + size, totalItems);
+        
+        List<Product> paginatedProducts = 
+            (startIndex < endIndex) ? products.subList(startIndex, endIndex) : new ArrayList<>();
+        
+        // Create response with pagination info
+        Map<String, Object> response = new HashMap<>();
+        response.put("products", paginatedProducts);
+        response.put("totalItems", totalItems);
+        response.put("currentPage", page);
+        response.put("totalPages", (int) Math.ceil((double) totalItems / size));
+        
+        return response;
+    }
 
+    /**
+     * Get new arrivals for a university
+     * @deprecated Use getNewArrivalsWithPagination instead
+     */
+    @Deprecated
     public List<Product> getNewArrivals(String university, int limit) {
         try {
             System.out.println("getNewArrivals called for university: " + university + ", limit: " + limit);
@@ -578,6 +630,138 @@ public class ProductService {
             }
         } catch (Exception e) {
             System.err.println("Error in getNewArrivals: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * Get new arrivals for a university with pagination
+     * 
+     * @param university The university to filter by
+     * @param page Page number (zero-based)
+     * @param size Number of items per page
+     * @return Map containing products list and pagination information
+     */
+    public Map<String, Object> getNewArrivalsWithPagination(String university, int page, int size) {
+        try {
+            System.out.println("getNewArrivalsWithPagination called for university: " + university);
+            
+            // Check if we should use the search table implementation
+            boolean useSearchTable = featureToggleConfig.useSearchTableForNewArrivals();
+            System.out.println("Feature toggle for search table enabled for new arrivals: " + useSearchTable);
+            
+            List<Product> products;
+            if (useSearchTable) {
+                System.out.println("Using search table implementation for new arrivals from: " + university);
+                products = getNewArrivalsUsingSearchTableWithoutLimit(university);
+            } else {
+                System.out.println("Using repository implementation for new arrivals from: " + university);
+                products = getNewArrivalsUsingRepositoryWithoutLimit(university);
+            }
+            
+            // Apply pagination
+            int totalItems = products.size();
+            int startIndex = Math.min(page * size, totalItems);
+            int endIndex = Math.min(startIndex + size, totalItems);
+            
+            List<Product> paginatedProducts = 
+                (startIndex < endIndex) ? products.subList(startIndex, endIndex) : new ArrayList<>();
+                
+            // Create response with pagination info
+            Map<String, Object> response = new HashMap<>();
+            response.put("products", paginatedProducts);
+            response.put("totalItems", totalItems);
+            response.put("currentPage", page);
+            response.put("totalPages", (int) Math.ceil((double) totalItems / size));
+            
+            return response;
+        } catch (Exception e) {
+            System.err.println("Error in getNewArrivalsWithPagination: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Return empty results with pagination info
+            Map<String, Object> response = new HashMap<>();
+            response.put("products", new ArrayList<>());
+            response.put("totalItems", 0);
+            response.put("currentPage", page);
+            response.put("totalPages", 0);
+            
+            return response;
+        }
+    }
+    
+    /**
+     * Gets new arrivals using the search table without applying a limit
+     * to support pagination
+     */
+    private List<Product> getNewArrivalsUsingSearchTableWithoutLimit(String university) {
+        try {
+            System.out.println("getNewArrivalsUsingSearchTableWithoutLimit called for university: " + university);
+            
+            // Use the search service's method but retrieve more results for pagination
+            List<Product> products = searchService.getNewArrivalsForUniversity(university, 1000); // Large limit
+            
+            if (!products.isEmpty()) {
+                System.out.println("Successfully retrieved " + products.size() + " new arrivals using search table");
+                return products;
+            }
+            
+            // Fallback to repository if search table returns no results
+            System.out.println("No results from search table, falling back to repository");
+            return getNewArrivalsUsingRepositoryWithoutLimit(university);
+        } catch (Exception e) {
+            System.err.println("Error in getNewArrivalsUsingSearchTableWithoutLimit: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Fallback to repository method
+            System.out.println("Falling back to repository method for new arrivals");
+            return getNewArrivalsUsingRepositoryWithoutLimit(university);
+        }
+    }
+    
+    /**
+     * Original repository-based implementation for new arrivals without limit
+     * to support pagination
+     */
+    private List<Product> getNewArrivalsUsingRepositoryWithoutLimit(String university) {
+        try {
+            List<Product> products;
+            
+            if (university != null && !university.isEmpty()) {
+                System.out.println("Finding products for university: " + university);
+                List<Product> dbResults = productRepository.findByUniversity(university);
+                // Convert to ArrayList before sorting (DynamoDB PaginatedList doesn't support sort)
+                products = new ArrayList<>(dbResults);
+                System.out.println("Found " + products.size() + " products for university: " + university);
+            } else {
+                System.out.println("Finding all products");
+                List<Product> dbResults = productRepository.findAll();
+                // Convert to ArrayList before sorting
+                products = new ArrayList<>(dbResults);
+                System.out.println("Found " + products.size() + " products total");
+            }
+            
+            if (products.isEmpty()) {
+                System.out.println("No products found, returning empty list");
+                return new ArrayList<>();
+            }
+            
+            // Filter only available products
+            System.out.println("Filtering for available products");
+            products = products.stream()
+                .filter(product -> "available".equals(product.getStatus()))
+                .collect(Collectors.toList());
+            
+            System.out.println("After filtering, " + products.size() + " available products");
+            
+            // Sort by posting date (newest first)
+            System.out.println("Sorting products by posting date");
+            products.sort(Comparator.comparing(Product::getPostingdate).reversed());
+            
+            return products;
+        } catch (Exception e) {
+            System.err.println("Error processing products in repository method: " + e.getMessage());
             e.printStackTrace();
             return new ArrayList<>();
         }

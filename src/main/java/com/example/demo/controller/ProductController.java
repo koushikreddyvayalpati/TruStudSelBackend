@@ -135,6 +135,24 @@ public class ProductController {
         }
     }
 
+    // Get featured products for a university and city with pagination
+    @GetMapping("/featured/{university}/{city}/paginated")
+    public ResponseEntity<Map<String, Object>> getFeaturedProductsPaginated(
+            @PathVariable String university,
+            @PathVariable String city,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> response = productService.getFeaturedProductsWithPagination(
+                university, city, page, size);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
     // Get new arrivals for a university
     @GetMapping("/new-arrivals/{university}")
     public ResponseEntity<List<Product>> getNewArrivals(
@@ -145,6 +163,23 @@ public class ProductController {
             return new ResponseEntity<>(newArrivals, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    // Get new arrivals for a university with pagination
+    @GetMapping("/new-arrivals/{university}/paginated")
+    public ResponseEntity<Map<String, Object>> getNewArrivalsPaginated(
+            @PathVariable String university,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> response = productService.getNewArrivalsWithPagination(
+                university, page, size);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 
