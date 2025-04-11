@@ -208,11 +208,29 @@ public class ProductController {
         return new ResponseEntity<>(products, HttpStatus.OK);
     }
 
-    // fetch product details based on category
+    // fetch product details based on category (without pagination)
     @GetMapping("/category/{category}")
     public ResponseEntity<List<Product>> getProductsByCategory(@PathVariable String category) {
         List<Product> products = productService.getProductsByCategory(category);
         return new ResponseEntity<>(products, HttpStatus.OK);
+    }
+    
+    // fetch product details based on category with pagination
+    @GetMapping("/category/{category}/paginated")
+    public ResponseEntity<Map<String, Object>> getProductsByCategoryPaginated(
+            @PathVariable String category,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Map<String, Object> response = productService.getProductsByCategoryWithPagination(
+                category, sortBy, page, size);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 
     // update product details based on product id

@@ -83,8 +83,54 @@ public class ProductService {
         return productRepository.findByEmail(email);
     }
     
+    /**
+     * Get products by category without pagination
+     * @deprecated Use getProductsByCategoryWithPagination instead
+     */
+    @Deprecated
     public List<Product> getProductsByCategory(String category) {
         return productRepository.findByCategory(category);
+    }
+    
+    /**
+     * Get products by category with pagination and optional sorting
+     * 
+     * @param category The product category to filter by
+     * @param sortBy Optional sorting parameter (price_low_high, price_high_low, newest)
+     * @param page Page number (zero-based)
+     * @param size Number of items per page
+     * @return Map containing products list and pagination information
+     */
+    public Map<String, Object> getProductsByCategoryWithPagination(
+            String category, String sortBy, int page, int size) {
+        
+        // Get all products in the category
+        List<Product> products = productRepository.findByCategory(category);
+        
+        // Filter out products that are not available
+        products = products.stream()
+            .filter(product -> "available".equals(product.getStatus()))
+            .collect(Collectors.toList());
+        
+        // Apply sorting if specified
+        applySorting(products, sortBy);
+        
+        // Apply pagination
+        int totalItems = products.size();
+        int startIndex = Math.min(page * size, totalItems);
+        int endIndex = Math.min(startIndex + size, totalItems);
+        
+        List<Product> paginatedProducts = 
+            (startIndex < endIndex) ? products.subList(startIndex, endIndex) : new ArrayList<>();
+        
+        // Create response with pagination info
+        Map<String, Object> response = new HashMap<>();
+        response.put("products", paginatedProducts);
+        response.put("totalItems", totalItems);
+        response.put("currentPage", page);
+        response.put("totalPages", (int) Math.ceil((double) totalItems / size));
+        
+        return response;
     }
     
     public List<Product> getProductsByUniversity(String university) {

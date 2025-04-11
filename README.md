@@ -31,6 +31,7 @@ http://your-api-domain:8080
 The application requires the following DynamoDB tables to be set up:
 - `products`: For storing product listings
 - `userdetails`: For storing user details
+- `userwishlist`: For storing wishlist items
 
 ## Authentication
 
@@ -38,32 +39,574 @@ Currently, the API doesn't require authentication tokens. Email addresses are us
 
 ## Available Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/files/product-images` | Upload multiple product images (max 5) |
-| POST | `/api/products/with-image-filenames` | Create product with pre-uploaded images |
-| POST | `/api/products/with-images` | Create product with images in one request |
-| POST | `/api/products` | Create a basic product without images |
-| GET | `/api/products/{id}` | Get product by ID |
-| GET | `/api/products/user/{email}` | Get products by user email |
-| GET | `/api/products/category/{category}` | Get products by category |
-| GET | `/api/products/university/{university}` | Get products by university with filters |
-| GET | `/api/products/city/{city}` | Get products by city with filters |
-| GET | `/api/products/nearby-universities/{zipcode}` | Get nearby universities based on zipcode |
-| GET | `/api/products/featured/{university}/{city}` | Get featured products for university and city |
-| GET | `/api/products/new-arrivals/{university}` | Get newest products for university |
-| PUT | `/api/products/{id}` | Update a product |
-| PATCH | `/api/products/{id}/status` | Update product status |
-| POST | `/api/products/{id}/images` | Add an image to a product |
-| DELETE | `/api/products/{id}/images` | Remove an image from a product |
-| DELETE | `/api/products/{id}` | Delete a product |
-| GET | `/api/wishlist/{email}` | Get wishlist items for a user |
-| GET | `/api/wishlist/{email}/products` | Get full product details for a user's wishlist |
-| POST | `/api/wishlist/{email}` | Add product to wishlist |
-| DELETE | `/api/wishlist/{email}/{productId}` | Remove product from wishlist |
-| GET | `/api/wishlist/{email}/check/{productId}` | Check if product is in user's wishlist |
+| Method | Endpoint | Description | Pagination |
+|--------|----------|-------------|------------|
+| POST | `/api/files/product-images` | Upload multiple product images (max 5) | No |
+| POST | `/api/products/with-image-filenames` | Create product with pre-uploaded images | No |
+| POST | `/api/products/with-images` | Create product with images in one request | No |
+| POST | `/api/products` | Create a basic product without images | No |
+| GET | `/api/products/{id}` | Get product by ID | No |
+| GET | `/api/products/user/{email}` | Get products by user email | No |
+| GET | `/api/products/category/{category}` | Get products by category | No |
+| GET | `/api/products/category/{category}/paginated` | Get products by category with pagination | **Yes** |
+| GET | `/api/products/university/{university}` | Get products by university with filters | **Yes** |
+| GET | `/api/products/city/{city}` | Get products by city with filters | **Yes** |
+| GET | `/api/products/nearby-universities/{zipcode}` | Get nearby universities based on zipcode | No |
+| GET | `/api/products/featured/{university}/{city}` | Get featured products for university and city | No |
+| GET | `/api/products/new-arrivals/{university}` | Get newest products for university | No |
+| GET | `/api/products/search` | Search products by keyword | **Yes** |
+| PUT | `/api/products/{id}` | Update a product | No |
+| PATCH | `/api/products/{id}/status` | Update product status | No |
+| POST | `/api/products/{id}/images` | Add an image to a product | No |
+| DELETE | `/api/products/{id}/images` | Remove an image from a product | No |
+| DELETE | `/api/products/{id}` | Delete a product | No |
+| GET | `/api/wishlist/{email}` | Get wishlist items for a user | No |
+| GET | `/api/wishlist/{email}/products` | Get full product details for a user's wishlist | No |
+| POST | `/api/wishlist/{email}` | Add product to wishlist | No |
+| DELETE | `/api/wishlist/{email}/{productId}` | Remove product from wishlist | No |
+| GET | `/api/wishlist/{email}/check/{productId}` | Check if product is in user's wishlist | No |
 
-## API Endpoints
+## Paginated API Endpoints
+
+### 1. Get Products by University with Pagination
+
+Retrieves products for a specific university with various filtering options and pagination.
+
+**Endpoint**: `GET /api/products/university/{university}`
+
+**URL Parameters**:
+- `university`: University name (e.g., "SUNY Buffalo")
+
+**Query Parameters**:
+- `category` (optional): Filter by product category (e.g., "textbooks", "furniture")
+- `sortBy` (optional): Sort products by "price_low_high", "price_high_low", "newest", or "popularity"
+- `condition` (optional): Filter by product condition (e.g., "like-new", "good", "fair")
+- `sellingType` (optional): Filter by selling type (e.g., "sell", "giveaway")
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Items per page (default: 20)
+
+**Example Request**:
+```javascript
+// Fetch first page of textbooks from SUNY Buffalo, 10 items per page, sorted by newest first
+fetch('http://your-api-domain:8080/api/products/university/SUNY%20Buffalo?category=textbooks&sortBy=newest&page=0&size=10')
+  .then(response => response.json())
+  .then(data => {
+    console.log(`Showing ${data.products.length} of ${data.totalItems} total products`);
+    console.log(`Page ${data.currentPage + 1} of ${data.totalPages}`);
+    
+    // Display products
+    data.products.forEach(product => {
+      console.log(`${product.name} - $${product.price}`);
+    });
+    
+    // Check if there are more pages
+    const hasNextPage = data.currentPage < data.totalPages - 1;
+    if (hasNextPage) {
+      // Show "Load More" button or implement infinite scrolling
+    }
+  });
+```
+
+**Response**:
+```json
+{
+  "products": [
+    {
+      "id": "123abc",
+      "name": "Calculus Textbook",
+      "category": "textbooks",
+      "price": "45.00",
+      "description": "Calculus textbook, barely used",
+      "email": "student@university.edu",
+      "sellerName": "Jane Smith",
+      "university": "SUNY Buffalo",
+      "city": "Buffalo",
+      "zipcode": "14260",
+      "primaryImage": "https://your-bucket.s3.amazonaws.com/image1.jpg",
+      "additionalImages": [],
+      "postingdate": "2023-09-15T14:30:00",
+      "productage": "like-new",
+      "sellingtype": "sell",
+      "status": "available"
+    },
+    // More products...
+  ],
+  "totalItems": 53,
+  "currentPage": 0,
+  "totalPages": 6
+}
+```
+
+### 2. Get Products by City with Pagination
+
+Retrieves products for a specific city with various filtering options and pagination.
+
+**Endpoint**: `GET /api/products/city/{city}`
+
+**URL Parameters**:
+- `city`: City name (e.g., "Buffalo")
+
+**Query Parameters**:
+- `university` (optional): Filter by specific university
+- `category` (optional): Filter by product category
+- `sortBy` (optional): Sort products by "price_low_high", "price_high_low", "newest", or "popularity"
+- `condition` (optional): Filter by product condition
+- `sellingType` (optional): Filter by selling type
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Items per page (default: 20)
+
+**Example Request**:
+```javascript
+// Function to fetch products from a city with pagination
+async function fetchProductsByCity(city, filters = {}, page = 0) {
+  // Build query parameters
+  const queryParams = new URLSearchParams();
+  
+  if (filters.university) queryParams.append('university', filters.university);
+  if (filters.category) queryParams.append('category', filters.category);
+  if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
+  if (filters.condition) queryParams.append('condition', filters.condition);
+  if (filters.sellingType) queryParams.append('sellingType', filters.sellingType);
+  
+  // Add pagination parameters
+  queryParams.append('page', page);
+  queryParams.append('size', filters.size || 20);
+  
+  const response = await fetch(
+    `http://your-api-domain:8080/api/products/city/${encodeURIComponent(city)}?${queryParams}`
+  );
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch products');
+  }
+  
+  return await response.json();
+}
+
+// Example usage with React component for infinite scrolling
+function ProductList() {
+  const [products, setProducts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  
+  const loadMoreProducts = async () => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    try {
+      const result = await fetchProductsByCity('Buffalo', { category: 'electronics' }, page);
+      
+      // Append new products to existing list
+      setProducts(prev => [...prev, ...result.products]);
+      
+      // Update pagination state
+      setPage(page + 1);
+      setHasMore(page + 1 < result.totalPages);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Initial load
+  useEffect(() => {
+    loadMoreProducts();
+  }, []);
+  
+  return (
+    <div>
+      {/* Product list */}
+      <div className="product-grid">
+        {products.map(product => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+      
+      {/* Load more button */}
+      {hasMore && (
+        <button 
+          disabled={loading} 
+          onClick={loadMoreProducts}
+        >
+          {loading ? 'Loading...' : 'Load More'}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+**Response**: Same format as the university endpoint.
+
+### 3. Search Products by Keyword with Pagination
+
+Search for products using keywords with filtering options and pagination.
+
+**Endpoint**: `GET /api/products/search`
+
+**Query Parameters**:
+- `keyword` (required): Search term to match against product names and descriptions
+- `university` (optional): Filter by university
+- `city` (optional): Filter by city
+- `category` (optional): Filter by category
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Items per page (default: 20, max: 50)
+
+**Note**: Either `university` or `city` parameter must be provided.
+
+**Example Request**:
+```javascript
+// Function to search products with pagination
+async function searchProducts(keyword, filters, page = 0) {
+  const queryParams = new URLSearchParams();
+  queryParams.append('keyword', keyword);
+  
+  // Add location filters (at least one is required)
+  if (filters.university) queryParams.append('university', filters.university);
+  if (filters.city) queryParams.append('city', filters.city);
+  
+  // Add optional filters
+  if (filters.category) queryParams.append('category', filters.category);
+  
+  // Add pagination parameters
+  queryParams.append('page', page);
+  queryParams.append('size', filters.size || 20);
+  
+  const response = await fetch(
+    `http://your-api-domain:8080/api/products/search?${queryParams}`
+  );
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to search products');
+  }
+  
+  return await response.json();
+}
+
+// Example usage with state management for pagination
+// In a React component
+const [searchResults, setSearchResults] = useState([]);
+const [pagination, setPagination] = useState({
+  currentPage: 0,
+  totalPages: 0,
+  totalItems: 0
+});
+
+const performSearch = async (query, page = 0) => {
+  setLoading(true);
+  try {
+    const results = await searchProducts(query, {
+      university: 'SUNY Buffalo',
+      size: 10
+    }, page);
+    
+    if (page === 0) {
+      // New search, replace results
+      setSearchResults(results.products);
+    } else {
+      // Loading more, append results
+      setSearchResults(prev => [...prev, ...results.products]);
+    }
+    
+    setPagination({
+      currentPage: results.currentPage,
+      totalPages: results.totalPages,
+      totalItems: results.totalItems
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    setError(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+**Response**:
+```json
+{
+  "products": [
+    {
+      "id": "abc123",
+      "name": "Computer Science Textbook",
+      "category": "textbooks",
+      "price": "35.00",
+      "description": "Introduction to Computer Science, great condition!",
+      "primaryImage": "https://your-bucket.s3.amazonaws.com/image2.jpg",
+      "university": "SUNY Buffalo",
+      "city": "Buffalo",
+      // Other product fields...
+    },
+    // More products...
+  ],
+  "totalItems": 28,
+  "currentPage": 0,
+  "totalPages": 3
+}
+```
+
+### 4. Get Products by Category with Pagination
+
+Retrieves products in a specific category with pagination and optional sorting.
+
+**Endpoint**: `GET /api/products/category/{category}/paginated`
+
+**URL Parameters**:
+- `category`: Product category (e.g., "textbooks", "furniture", "electronics", etc.)
+
+**Query Parameters**:
+- `sortBy` (optional): Sort products by "price_low_high", "price_high_low", or "newest"
+- `page` (optional): Page number (zero-based, default: 0)
+- `size` (optional): Items per page (default: 20)
+
+**Example Request**:
+```javascript
+// Function to fetch products by category with pagination
+async function getProductsByCategory(category, page = 0, size = 20, sortBy = 'newest') {
+  try {
+    const queryParams = new URLSearchParams({
+      page,
+      size,
+      sortBy
+    });
+    
+    const response = await fetch(
+      `http://your-api-domain:8080/api/products/category/${encodeURIComponent(category)}/paginated?${queryParams}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch products');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching ${category} products:`, error);
+    throw error;
+  }
+}
+
+// Example usage in a React component
+function CategoryProductList({ category }) {
+  const [products, setProducts] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 0,
+    totalPages: 0,
+    totalItems: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const loadPage = async (pageNumber) => {
+    setLoading(true);
+    try {
+      const result = await getProductsByCategory(category, pageNumber, 10, 'price_low_high');
+      setProducts(result.products);
+      setPagination({
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+        totalItems: result.totalItems
+      });
+      setError(null);
+    } catch (error) {
+      setError('Failed to load products. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load first page when component mounts or category changes
+  useEffect(() => {
+    loadPage(0);
+  }, [category]);
+  
+  if (loading && pagination.currentPage === 0) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
+  
+  if (error) {
+    return (
+      <View>
+        <Text>{error}</Text>
+        <Button title="Retry" onPress={() => loadPage(pagination.currentPage)} />
+      </View>
+    );
+  }
+  
+  return (
+    <View>
+      <Text style={styles.title}>{category} Products</Text>
+      <Text style={styles.subtitle}>
+        Showing {products.length} of {pagination.totalItems} products
+      </Text>
+      
+      <FlatList
+        data={products}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <ProductCard product={item} />}
+        contentContainerStyle={styles.productList}
+      />
+      
+      <View style={styles.pagination}>
+        <Button
+          title="Previous"
+          disabled={pagination.currentPage === 0}
+          onPress={() => loadPage(pagination.currentPage - 1)}
+        />
+        <Text>Page {pagination.currentPage + 1} of {pagination.totalPages}</Text>
+        <Button
+          title="Next"
+          disabled={pagination.currentPage >= pagination.totalPages - 1}
+          onPress={() => loadPage(pagination.currentPage + 1)}
+        />
+      </View>
+    </View>
+  );
+}
+```
+
+**Response**:
+```json
+{
+  "products": [
+    {
+      "id": "456def",
+      "name": "Gaming Laptop",
+      "category": "electronics",
+      "price": "899.99",
+      "description": "Gaming laptop, 16GB RAM, 512GB SSD",
+      "email": "seller@example.com",
+      "sellerName": "John Doe",
+      "university": "SUNY Buffalo",
+      "city": "Buffalo",
+      "zipcode": "14260",
+      "primaryImage": "https://your-bucket.s3.amazonaws.com/laptop.jpg",
+      "additionalImages": ["https://your-bucket.s3.amazonaws.com/laptop_side.jpg"],
+      "postingdate": "2023-09-10T10:15:00",
+      "productage": "good",
+      "sellingtype": "sell",
+      "status": "available"
+    },
+    // More products...
+  ],
+  "totalItems": 45,
+  "currentPage": 0,
+  "totalPages": 5
+}
+```
+
+## Implementing Pagination in Your App
+
+### Example: Pagination Component
+
+```javascript
+import React from 'react';
+import { View, Button, Text } from 'react-native';
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  return (
+    <View style={styles.paginationContainer}>
+      <Button 
+        title="Previous"
+        disabled={currentPage === 0}
+        onPress={() => onPageChange(currentPage - 1)}
+      />
+      
+      <Text style={styles.pageInfo}>
+        Page {currentPage + 1} of {totalPages}
+      </Text>
+      
+      <Button 
+        title="Next"
+        disabled={currentPage >= totalPages - 1}
+        onPress={() => onPageChange(currentPage + 1)}
+      />
+    </View>
+  );
+};
+```
+
+### Example: Infinite Scrolling Implementation
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import { FlatList, ActivityIndicator } from 'react-native';
+
+const InfiniteProductList = ({ fetchProducts, initialFilters }) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [filters, setFilters] = useState(initialFilters);
+
+  // Initial load
+  useEffect(() => {
+    loadFirstPage();
+  }, [filters]);
+
+  // Load first page (refresh)
+  const loadFirstPage = async () => {
+    setLoading(true);
+    setProducts([]);
+    setPage(0);
+    setHasMore(true);
+    
+    try {
+      const result = await fetchProducts(filters, 0);
+      setProducts(result.products);
+      setHasMore(result.currentPage < result.totalPages - 1);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load next page (pagination)
+  const loadNextPage = async () => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    const nextPage = page + 1;
+    
+    try {
+      const result = await fetchProducts(filters, nextPage);
+      setProducts([...products, ...result.products]);
+      setPage(nextPage);
+      setHasMore(nextPage < result.totalPages - 1);
+    } catch (error) {
+      console.error('Error loading more products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadFirstPage();
+    setRefreshing(false);
+  };
+
+  return (
+    <FlatList
+      data={products}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <ProductCard product={item} />}
+      onEndReached={loadNextPage}
+      onEndReachedThreshold={0.5}
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      ListFooterComponent={loading && hasMore ? <ActivityIndicator size="large" /> : null}
+    />
+  );
+};
+```
+
+## API Endpoints (Full Reference)
 
 ### 1. Upload Product Images
 ```javascript
