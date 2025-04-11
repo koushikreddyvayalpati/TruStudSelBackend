@@ -1,0 +1,49 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.example:demo >--------------------------
+[INFO] Building demo 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.4.4:run (default-cli) > test-compile @ demo >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ demo ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ demo ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ demo ---
+[INFO] skip non existing resourceDirectory /Users/vayalpatikoushikreddy/Downloads/demo/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ demo ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.4.4:run (default-cli) < test-compile @ demo <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.4.4:run (default-cli) @ demo ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.4)
+
+2025-04-10T19:07:45.216-04:00  INFO 35912 --- [demo] [           main] com.example.demo.DemoApplication         : Starting DemoApplication using Java 17.0.14 with PID 35912 (/Users/vayalpatikoushikreddy/Downloads/demo/target/classes started by vayalpatikoushikreddy in /Users/vayalpatikoushikreddy/Downloads/demo)
+2025-04-10T19:07:45.217-04:00  INFO 35912 --- [demo] [           main] com.example.demo.DemoApplication         : No active profile set, falling back to 1 default profile: "default"
+2025-04-10T19:07:45.606-04:00  INFO 35912 --- [demo] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-04-10T19:07:45.612-04:00  INFO 35912 --- [demo] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-10T19:07:45.612-04:00  INFO 35912 --- [demo] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.39]
+2025-04-10T19:07:45.644-04:00  INFO 35912 --- [demo] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-10T19:07:45.644-04:00  INFO 35912 --- [demo] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 409 ms
+2025-04-10T19:07:46.250-04:00  INFO 35912 --- [demo] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2025-04-10T19:07:46.255-04:00  INFO 35912 --- [demo] [           main] com.example.demo.DemoApplication         : Started DemoApplication in 1.196 seconds (process running for 1.388)
+2025-04-10T19:08:24.185-04:00  INFO 35912 --- [demo] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-10T19:08:24.186-04:00  INFO 35912 --- [demo] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-10T19:08:24.187-04:00  INFO 35912 --- [demo] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms

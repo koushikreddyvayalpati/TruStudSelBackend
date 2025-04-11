@@ -8,6 +8,7 @@ import com.example.demo.model.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,5 +82,66 @@ public class ProductRepository {
 
     public void delete(Product product) {
         dynamoDBMapper.delete(product);
+    }
+    
+    /**
+     * Search for products by keyword in name and description
+     * 
+     * @param keyword The search term to look for in product name and description
+     * @return List of products matching the search term
+     */
+    public List<Product> searchByKeyword(final String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return findAll();
+        }
+        
+        final String keywordLower = keyword.toLowerCase();
+        
+        List<Product> allProducts = findAll();
+        return allProducts.stream()
+            .filter(product -> 
+                (product.getName() != null && product.getName().toLowerCase().contains(keywordLower)) ||
+                (product.getDescription() != null && product.getDescription().toLowerCase().contains(keywordLower)))
+            .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * Batch load multiple products by their IDs in a single DynamoDB operation.
+     * This is more efficient than loading each product separately.
+     *
+     * @param productIds List of product IDs to retrieve
+     * @return List of Products matching the provided IDs
+     */
+    public List<Product> batchLoad(List<String> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // Create a list of Product objects with just the ID set
+        List<Object> keysObjects = new ArrayList<>();
+        for (String id : productIds) {
+            Product keyObject = new Product();
+            keyObject.setId(id);
+            keysObjects.add(keyObject);
+        }
+        
+        // Perform the batch load operation
+        Map<String, List<Object>> batchLoadResult = dynamoDBMapper.batchLoad(keysObjects);
+        
+        // Extract and return the products from the result
+        List<Object> resultItems = batchLoadResult.get("products");
+        if (resultItems == null || resultItems.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // Convert to list of Product objects
+        List<Product> products = new ArrayList<>();
+        for (Object item : resultItems) {
+            if (item instanceof Product) {
+                products.add((Product) item);
+            }
+        }
+        
+        return products;
     }
 } 

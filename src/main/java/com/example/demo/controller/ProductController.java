@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.model.Product;
 import com.example.demo.service.ProductService;
 import com.example.demo.service.S3Service;
+import com.example.demo.service.ProductSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -21,11 +23,13 @@ public class ProductController {
 
     private final ProductService productService;
     private final S3Service s3Service;
+    private final ProductSearchService searchService;
 
     @Autowired
-    public ProductController(ProductService productService, S3Service s3Service) {
+    public ProductController(ProductService productService, S3Service s3Service, ProductSearchService searchService) {
         this.productService = productService;
         this.s3Service = s3Service;
+        this.searchService = searchService;
     }
 
     // Get products by university with optional filters
@@ -41,6 +45,23 @@ public class ProductController {
         try {
             Map<String, Object> response = productService.getProductsByUniversityWithFilters(
                 university, category, sortBy, condition, sellingType, page, size);
+                
+            // If no products found through search table, fallback to direct repository
+            if (response.containsKey("products") && ((List<?>)response.get("products")).isEmpty() 
+                && (int)response.get("totalItems") == 0) {
+                System.out.println("No products found via search table, falling back to repository for university: " + university);
+                
+                // Fallback to direct repository access
+                List<Product> directProducts = productService.getProductsByUniversity(university);
+                
+                if (!directProducts.isEmpty()) {
+                    System.out.println("Found " + directProducts.size() + " products directly from repository");
+                    Map<String, Object> fallbackResponse = productService.getProductsByUniversityWithFiltersUsingRepository(
+                        university, category, sortBy, condition, sellingType, page, size);
+                    return ResponseEntity.ok(fallbackResponse);
+                }
+            }
+            
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
@@ -53,7 +74,6 @@ public class ProductController {
     @GetMapping("/city/{city}")
     public ResponseEntity<Map<String, Object>> getProductsByCity(
             @PathVariable String city,
-            @RequestParam(required = false) String university,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String condition,
@@ -62,7 +82,24 @@ public class ProductController {
             @RequestParam(defaultValue = "20") int size) {
         try {
             Map<String, Object> response = productService.getProductsByCityWithFilters(
-                city, university, category, sortBy, condition, sellingType, page, size);
+                city, category, sortBy, condition, sellingType, page, size);
+            
+            // If no products found through search table, fallback to direct repository
+            if (response.containsKey("products") && ((List<?>)response.get("products")).isEmpty() 
+                && (int)response.get("totalItems") == 0) {
+                System.out.println("No products found via search table, falling back to repository for city: " + city);
+                
+                // Fallback to direct repository access
+                List<Product> directProducts = productService.getProductsByCity(city);
+                
+                if (!directProducts.isEmpty()) {
+                    System.out.println("Found " + directProducts.size() + " products directly from repository");
+                    Map<String, Object> fallbackResponse = productService.getProductsByCityWithFiltersUsingRepository(
+                        city, category, sortBy, condition, sellingType, page, size);
+                    return ResponseEntity.ok(fallbackResponse);
+                }
+            }
+            
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
@@ -111,6 +148,42 @@ public class ProductController {
         }
     }
 
+    // Search products by keyword with location filter
+    @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(required = false) String university,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        try {
+            // Validate that at least one location filter is provided
+            if ((university == null || university.isEmpty()) && 
+                (city == null || city.isEmpty())) {
+                throw new IllegalArgumentException("Either university or city must be provided");
+            }
+            
+            // Cap the page size for efficiency
+            int actualSize = Math.min(size, 50);
+            
+            // Perform the search
+            Map<String, Object> results = searchService.searchProducts(
+                keyword, university, city, category, page, actualSize);
+            
+            return ResponseEntity.ok(results);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "An error occurred during search: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
     // created new product listing
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {
@@ -144,12 +217,10 @@ public class ProductController {
 
     // update product details based on product id
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(
-            @PathVariable String id, 
-            @RequestBody Product product) {
-        product.setId(id);
+    public ResponseEntity<Product> updateProduct(@PathVariable String id, @RequestBody Product product) {
         try {
-            Product updatedProduct = productService.updateProduct(product);
+            // Update product with correct method signature (id, product)
+            Product updatedProduct = productService.updateProduct(id, product);
             return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -303,6 +374,67 @@ public class ProductController {
             return new ResponseEntity<>(savedProduct, HttpStatus.CREATED);
         } catch (IOException e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Admin endpoint to reindex all products
+     */
+    @PostMapping("/admin/reindex")
+    public ResponseEntity<Map<String, String>> reindexAllProducts() {
+        try {
+            // Start reindexing in background
+            new Thread(() -> {
+                searchService.reindexAllProducts();
+            }).start();
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Reindexing initiated in the background");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to start reindexing: " + e.getMessage());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    // Debug endpoint to check if Buffalo products exist in repository
+    @GetMapping("/debug/city/{city}")
+    public ResponseEntity<Map<String, Object>> debugCityProducts(@PathVariable String city) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<Product> directProducts = productService.getProductsByCity(city);
+            response.put("repository_products_count", directProducts.size());
+            response.put("city", city);
+            if (!directProducts.isEmpty()) {
+                response.put("first_product", directProducts.get(0));
+            }
+            
+            // Also check if these products are indexed in the search table
+            List<Product> allProducts = productService.getAllProducts();
+            response.put("all_products_count", allProducts.size());
+            
+            List<Product> buffaloProducts = allProducts.stream()
+                .filter(p -> city.equals(p.getCity()))
+                .collect(Collectors.toList());
+            response.put("filtered_city_products", buffaloProducts.size());
+            
+            if (!buffaloProducts.isEmpty()) {
+                // Check if these products have been indexed
+                response.put("first_product_details", Map.of(
+                    "id", buffaloProducts.get(0).getId(),
+                    "name", buffaloProducts.get(0).getName(),
+                    "city", buffaloProducts.get(0).getCity(),
+                    "status", buffaloProducts.get(0).getStatus()
+                ));
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 } 

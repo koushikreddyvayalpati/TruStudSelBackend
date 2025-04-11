@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.model.UserDetails;
 import com.example.demo.service.UserDetailsService;
+import com.example.demo.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,16 +11,19 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserDetailsController {
 
     private final UserDetailsService userDetailsService;
+    private final ProductService productService;
 
     @Autowired
-    public UserDetailsController(UserDetailsService userDetailsService) {
+    public UserDetailsController(UserDetailsService userDetailsService, ProductService productService) {
         this.userDetailsService = userDetailsService;
+        this.productService = productService;
     }
 
     // Create a new user for profile filling screen
@@ -180,6 +184,42 @@ public class UserDetailsController {
             return new ResponseEntity<>(updatedUser, HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+    
+    // Get all products in a user's wishlist efficiently using batch operation
+    @GetMapping("/{email}/wishlist/products")
+    public ResponseEntity<List<com.example.demo.model.Product>> getWishlistProducts(@PathVariable String email) {
+        System.out.println("getWishlistProducts called for email: " + email);
+        try {
+            UserDetails userDetails = userDetailsService.getUserByEmail(email);
+            if (userDetails == null) {
+                System.out.println("User not found for email: " + email);
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            
+            List<String> wishlistProductIds = userDetails.getProductswishlist();
+            if (wishlistProductIds == null || wishlistProductIds.isEmpty()) {
+                System.out.println("Wishlist is empty for user: " + email);
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK);
+            }
+            
+            System.out.println("Found " + wishlistProductIds.size() + " product IDs in wishlist: " + wishlistProductIds);
+            
+            // Use the efficient batch operation to get all wishlist products at once
+            try {
+                List<com.example.demo.model.Product> wishlistProducts = productService.getWishlistProducts(wishlistProductIds);
+                System.out.println("Successfully retrieved " + wishlistProducts.size() + " products from wishlist");
+                return new ResponseEntity<>(wishlistProducts, HttpStatus.OK);
+            } catch (Exception e) {
+                System.err.println("Error retrieving wishlist products: " + e.getMessage());
+                e.printStackTrace();
+                throw e; // Re-throw to be caught by outer catch
+            }
+        } catch (Exception e) {
+            System.err.println("Error in getWishlistProducts: " + e.getMessage());
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 } 

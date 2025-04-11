@@ -57,6 +57,11 @@ Currently, the API doesn't require authentication tokens. Email addresses are us
 | POST | `/api/products/{id}/images` | Add an image to a product |
 | DELETE | `/api/products/{id}/images` | Remove an image from a product |
 | DELETE | `/api/products/{id}` | Delete a product |
+| GET | `/api/wishlist/{email}` | Get wishlist items for a user |
+| GET | `/api/wishlist/{email}/products` | Get full product details for a user's wishlist |
+| POST | `/api/wishlist/{email}` | Add product to wishlist |
+| DELETE | `/api/wishlist/{email}/{productId}` | Remove product from wishlist |
+| GET | `/api/wishlist/{email}/check/{productId}` | Check if product is in user's wishlist |
 
 ## API Endpoints
 
@@ -310,6 +315,218 @@ const HomeScreen = ({ userUniversity, userCity }) => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ProductCard product={item} />
+        )}
+      />
+    </View>
+  );
+};
+```
+
+## Wishlist Integration
+
+The API provides endpoints to manage user wishlists, allowing users to save products they're interested in.
+
+### 1. Get User's Wishlist Items
+
+```javascript
+const getWishlistItems = async (userEmail) => {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/wishlist/${encodeURIComponent(userEmail)}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch wishlist');
+    }
+    
+    const wishlistItems = await response.json();
+    return wishlistItems;
+  } catch (error) {
+    console.error('Error fetching wishlist:', error);
+    throw error;
+  }
+};
+```
+
+### 2. Get Full Product Details for Wishlist Items
+
+```javascript
+const getWishlistProducts = async (userEmail) => {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/wishlist/${encodeURIComponent(userEmail)}/products`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch wishlist products');
+    }
+    
+    const products = await response.json();
+    return products;
+  } catch (error) {
+    console.error('Error fetching wishlist products:', error);
+    throw error;
+  }
+};
+```
+
+### 3. Add Product to Wishlist
+
+```javascript
+const addToWishlist = async (userEmail, productId) => {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/wishlist/${encodeURIComponent(userEmail)}?productId=${productId}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to add item to wishlist');
+    }
+    
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error adding to wishlist:', error);
+    throw error;
+  }
+};
+```
+
+### 4. Remove Product from Wishlist
+
+```javascript
+const removeFromWishlist = async (userEmail, productId) => {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/wishlist/${encodeURIComponent(userEmail)}/${productId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to remove item from wishlist');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error removing from wishlist:', error);
+    throw error;
+  }
+};
+```
+
+### 5. Check if Product is in Wishlist
+
+```javascript
+const isInWishlist = async (userEmail, productId) => {
+  try {
+    const response = await fetch(
+      `http://your-api-domain:8080/api/wishlist/${encodeURIComponent(userEmail)}/check/${productId}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to check wishlist status');
+    }
+    
+    const result = await response.json();
+    return result; // Returns true if in wishlist, false otherwise
+  } catch (error) {
+    console.error('Error checking wishlist status:', error);
+    throw error;
+  }
+};
+```
+
+### 6. Wishlist Screen Example
+
+```javascript
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, Button, ActivityIndicator } from 'react-native';
+
+const WishlistScreen = ({ userEmail }) => {
+  const [wishlistProducts, setWishlistProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const fetchWishlist = async () => {
+    setLoading(true);
+    try {
+      const products = await getWishlistProducts(userEmail);
+      setWishlistProducts(products);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+      setError('Failed to load wishlist. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchWishlist();
+  }, [userEmail]);
+  
+  const handleRemoveFromWishlist = async (productId) => {
+    try {
+      await removeFromWishlist(userEmail, productId);
+      // Update local state after successful removal
+      setWishlistProducts(wishlistProducts.filter(product => product.id !== productId));
+    } catch (error) {
+      console.error('Error removing item from wishlist:', error);
+    }
+  };
+  
+  if (loading) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
+  
+  if (error) {
+    return (
+      <View>
+        <Text>{error}</Text>
+        <Button title="Retry" onPress={fetchWishlist} />
+      </View>
+    );
+  }
+  
+  if (wishlistProducts.length === 0) {
+    return (
+      <View>
+        <Text>Your wishlist is empty.</Text>
+        <Button title="Browse Products" onPress={() => {/* Navigate to product listing */}} />
+      </View>
+    );
+  }
+  
+  return (
+    <View>
+      <Text style={styles.title}>My Wishlist</Text>
+      <FlatList
+        data={wishlistProducts}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.productCard}>
+            <Image source={{ uri: item.primaryImage }} style={styles.productImage} />
+            <View style={styles.productInfo}>
+              <Text style={styles.productName}>{item.name}</Text>
+              <Text style={styles.productPrice}>${item.price}</Text>
+              <Button 
+                title="Remove" 
+                onPress={() => handleRemoveFromWishlist(item.id)} 
+              />
+              <Button 
+                title="View Details" 
+                onPress={() => {/* Navigate to product details */}} 
+              />
+            </View>
+          </View>
         )}
       />
     </View>
