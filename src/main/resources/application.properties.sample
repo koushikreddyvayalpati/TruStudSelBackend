@@ -1,0 +1,31 @@
+spring.application.name=demo
+
+# AWS S3 Configuration
+# Replace these with your actual AWS credentials or set them as environment variables
+aws.s3.access-key=${AWS_ACCESS_KEY:your_access_key_here}
+aws.s3.secret-key=${AWS_SECRET_KEY:your_secret_key_here}
+aws.s3.region=us-east-2
+aws.s3.bucket-name=trustedproductimages
+
+# AWS DynamoDB Configuration
+# Uses the same credentials as S3
+aws.dynamodb.access-key=${AWS_ACCESS_KEY:your_access_key_here}
+aws.dynamodb.secret-key=${AWS_SECRET_KEY:your_secret_key_here}
+aws.dynamodb.region=us-east-2
+aws.dynamodb.endpoint=https://dynamodb.us-east-2.amazonaws.com
+aws.dynamodb.table.user-details=userdetails
+aws.dynamodb.table-name=products
+aws.dynamodb.table.wishlist=userwishlist
+
+# Feature Toggle Configuration
+feature.search_table.enabled=true
+feature.search_table.university_filter_percentage=100
+feature.search_table.city_filter_percentage=100
+feature.search_table.category_filter_percentage=0
+feature.search_table.featured_percentage=0
+feature.search_table.new_arrivals_percentage=100
+
+# Note: DO NOT commit any actual AWS credentials to version control
+# Set these environment variables in your local development environment:
+# - AWS_ACCESS_KEY: Your AWS access key ID
+# - AWS_SECRET_KEY: Your AWS secret access key 

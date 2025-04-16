@@ -13,18 +13,18 @@ http://your-api-domain:8080
 ### AWS Credentials Configuration
 
 1. The application requires AWS credentials to interact with S3 and DynamoDB.
-2. Create a copy of the application.properties.template file:
+2. **IMPORTANT SECURITY NOTE**: Never commit AWS credentials directly in the application.properties file!
+3. Instead, use environment variables:
    ```
-   cp src/main/resources/application.properties.template src/main/resources/application.properties
+   # Set these environment variables in your development environment
+   export AWS_ACCESS_KEY=your_aws_access_key
+   export AWS_SECRET_KEY=your_aws_secret_key
    ```
-3. Edit the application.properties file with your AWS credentials:
+4. For local development, create your application.properties file based on the sample:
    ```
-   aws.s3.access-key=YOUR_ACCESS_KEY_HERE
-   aws.s3.secret-key=YOUR_SECRET_KEY_HERE
-   aws.dynamodb.access-key=YOUR_ACCESS_KEY_HERE
-   aws.dynamodb.secret-key=YOUR_SECRET_KEY_HERE
+   cp src/main/resources/application.properties.sample src/main/resources/application.properties
    ```
-4. The application.properties file is ignored by git to prevent credential leakage.
+5. In production environments, set these environment variables in your deployment platform (AWS, Heroku, etc.)
 
 ### Required DynamoDB Tables
 
